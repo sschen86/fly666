@@ -1,0 +1,24 @@
+{
+  "name": "fly666",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "https://github.com/sschen86/fly666.git",
+  "author": "sschen86 <sschen86@163.com>",
+  "license": "MIT",
+  "scripts": {
+    "dev": "node index"
+  },
+  "dependencies": {
+    "koa": "^2.7.0",
+    "mongoose": "^5.6.4"
+  },
+  "devDependencies": {
+    "@smartx/eslint-config-tendative": "^1.0.2",
+    "eslint": "5.16.0",
+    "eslint-config-standard": "^13.0.1",
+    "eslint-plugin-import": "^2.18.0",
+    "eslint-plugin-node": "^9.1.0",
+    "eslint-plugin-promise": "^4.2.1",
+    "eslint-plugin-standard": "^4.0.0"
+  }
+}

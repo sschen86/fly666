@@ -1,0 +1,23 @@
+const Koa = require('koa')
+
+const app = new Koa()
+
+app.use(async (ctx, next) => {
+    ctx.res.write(JSON.stringify(ctx.req.headers))
+    ctx.res.end('xxx')
+})
+app.listen(3000)
+
+// #services/member/login
+
+// #openapi/gateway-config
+// #openapi/model/create
+
+const gatewayConfig = [
+    ['member/login', '接口中文名', {
+        method: 'post',
+    }],
+]
+
+// gateway('member/login', params, callback)
+// gateway('member/login', params).then(resolve, reject).catch(reject)
