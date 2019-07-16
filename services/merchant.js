@@ -11,3 +11,5 @@ module.exports = {
 }
 
 // 'merchant/info/save'
+
+// xxx/gateway-config

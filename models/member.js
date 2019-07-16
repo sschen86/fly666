@@ -1,7 +1,7 @@
 
 const model = require('./system/model')
 
-model.define('member', {
+model.define('Member', {
     id: {
         $comment: '用户id',
         $type: 'long',
@@ -14,54 +14,10 @@ model.define('member', {
             createTimeText: { $type: String, $format: 'dateDefault' },
         },
     },
-}, {
-    methods: {
-
-    },
-    statics: {
-
-    },
-    query: {
-
-    },
 })
 
-member = require('xxx')('member')
-
-model('member').define({
-    fields: {
-
-    },
-
-})
-
-model('member').statics({
-
-})
-
-member.query({
-
-})
-
-const serviceSources = ['mock', 'sgtest', {
-    id: 'sgdev',
-    install: (ctx) => {
-        const params = ctx.params
-        const { data, headers, cookies } = params
-    },
-}]
-
-services('member/login', [
-    (ctx) => {
-        const params = ctx.params
-        const { data, headers, cookies } = params
-    },
-    null,
-])
-
-const gateway = {
-    url: '',
-    method: '',
+model.Member.services.loginInfos = {
+    id: '',
     reqAdapter: {
 
     },
@@ -69,3 +25,47 @@ const gateway = {
 
     },
 }
+
+model.define('Category', {
+    id: {
+        $primary: true,
+        $comment: '分类id',
+        $type: 'long',
+    },
+    label: {
+        $comment: '分类名称',
+        $type: String,
+    },
+})
+
+model.define('Post', {
+    id: {
+        $comment: '文章id',
+        $type: String,
+    },
+    content: {
+        $comment: '文章内容',
+        $type: String,
+    },
+    categoryId: {
+        $type: 'id',
+        $getters: {
+            category: {
+                $cascade: {
+                    type: Object,
+                    model: 'Category',
+                    primaryKey: 'categoryId',
+                },
+            },
+        },
+    },
+})
+
+model.Post.service('post/detail', { id: 666 }, {
+    id: true,
+    content: true,
+    category: {
+        id: true,
+
+    },
+})
