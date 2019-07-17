@@ -4,6 +4,7 @@ module.exports = {
   rules: {
     'no-sparse-arrays': 0,
     'camelcase': 0,
+    'guard-for-in':0,
     "@typescript-eslint/explicit-member-accessibility": 0,
     'comma-dangle': [2, 'always-multiline'],
     'indent': [2, 4, {
