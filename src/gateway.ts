@@ -81,5 +81,6 @@ function gatewaysInit(configs) {
 }
 
 function gatewayContext(ctx) {
-    return { params: ctx.query, ctx, data: {}, models: { Member }}
+    console.info(ctx.request.body)
+    return { params: ctx.query, ctx, data: {}, model: { Member }}
 }
