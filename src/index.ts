@@ -28,11 +28,13 @@ createConnection().then(async connection => {
 
 
 import * as Koa from 'koa'
+import bodyParser from 'koa-bodyParser'
 import router from './router'
 
 
 const app = new Koa()
 
+app.user(bodyParser())
 app.use(router.routes())
 
 /*

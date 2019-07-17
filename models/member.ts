@@ -1,8 +1,25 @@
 import { Entity, PrimaryGeneratedColumn, Column, BaseEntity } from 'typeorm'
-import md5 from '../utils/md5'
+// import md5 from '../utils/md5'
 
 @Entity()
 export default class Member extends BaseEntity {
+
+    static instance(data) {
+        const instance = new Member()
+        instance.mobile = data.mobile
+        instance.nick = data.nick
+        instance.password = '123456'
+        instance.passwordSafely = false
+        return instance
+    }
+
+    static async notExists(option) {
+        return !(await this.findOne(option))
+    }
+
+    static async exists(option) {
+        return !(await this.notExists(option))
+    }
 
     @PrimaryGeneratedColumn()
     id: number
@@ -10,7 +27,7 @@ export default class Member extends BaseEntity {
     @Column()
     nick: string
 
-    @Column()
+    @Column({ unique: true })
     mobile: string
 
     @Column()
@@ -19,20 +36,4 @@ export default class Member extends BaseEntity {
     @Column()
     passwordSafely: Boolean
 
-    constructor(data) {
-        super()
-        this.nick = data.nick
-        this.mobile = data.mobile
-        this.password = '123456'
-        // this.password = md5('123456')
-        this.passwordSafely = false
-    }
-
-    async notExists(option) {
-        return !(await Member.findOne(option))
-    }
-
-    async exists(option) {
-        return !this.notExists(option)
-    }
 }

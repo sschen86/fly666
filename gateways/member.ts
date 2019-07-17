@@ -28,13 +28,14 @@ const login_account = ['用户名登录', {
         async response(ctx, resolve, reject) {
             const { account, password } = ctx.params
             const { Member } = ctx.model
-            if (await Member.notExists({ account })) {
+
+            if (await Member.notExists({ mobile: account })) {
                 reject('用户未注册')
             }
-            if (await Member.notExists({ account, password })) {
+            if (await Member.notExists({ mobile: account, password })) {
                 reject('密码错误')
             }
-            resolve(Member.find({ account, password }))
+            resolve(await Member.findOne({ mobile: account, password, select: ['mobile', 'nick'] }))
         },
     },
     sgtest: {
@@ -49,7 +50,8 @@ const create = ['用户注册', {
         async response(ctx, resolve, reject) {
             const { Member } = ctx.model
             const { account, nick } = ctx.params
-            if (await Member.exist({ account })) {
+
+            if (await Member.exists({ mobile: account })) {
                 reject('手机号码已被注册')
             }
 
@@ -57,12 +59,14 @@ const create = ['用户注册', {
                 reject('手机号码错误')
             }
 
-            const user = new Member({
+            const user = Member.create({
                 mobile: account,
-                nick: '张三',
+                nick,
+                passwordSafely: false,
+                password: '123456',
             })
 
-            user.save()
+            await user.save()
 
             resolve()
         },
@@ -82,4 +86,5 @@ export default {
             },
         },
     }],
+    create,
 }

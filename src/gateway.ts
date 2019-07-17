@@ -1,8 +1,10 @@
 
 import member from '../gateways/member'
+import 'reflect-metadata'
+import { createConnection } from 'typeorm'
 import Member from '../models/Member'
 
-
+let hasConnection  = false
 const gateways = {}
 const sourceId = 'mock'
 gatewaysInit({
@@ -11,10 +13,12 @@ gatewaysInit({
 
 
 export default async function (ctx, next) {
-    const { url } = ctx.request
-    const gatewayId = url.replace('/gateway/', '')
+    const { path, query } = ctx
+    const gatewayId = path.replace('/gateway/', '')
     const gateway = gateways[gatewayId]
-
+    // console.info(ctx.request, {
+    //   path: ctx.path, query: ctx.query, querystring: ctx.querystring,
+    // })
     if (!gateway) {
         ctx.body = { code: 404, message: '接口不存在' }
         return
@@ -34,11 +38,19 @@ export default async function (ctx, next) {
     const { response } = gatewayConfig
     if (typeof response === 'function') {
         try {
-            await response({ params: {}, headers: {}, model: { Member }}, resolve, reject)
+            if (!hasConnection) {
+                await createConnection()
+                hasConnection = true
+            }
+
+            // console.info(ctx.request)
+
+            await response(gatewayContext(ctx), resolve, reject)
         } catch (err) {
             if (err.message === 'PROMISE.RESOLVE' || err.message === 'PROMISE.REJECT') {
                 ctx.body = body
             } else {
+                console.error(err.stack)
                 ctx.body = { code: 503, message: err.message }
             }
         }
@@ -66,4 +78,8 @@ function gatewaysInit(configs) {
             gateways[gatewayId] = childConfigs[name]
         }
     }
+}
+
+function gatewayContext(ctx) {
+    return { params: ctx.query, ctx, data: {}, models: { Member }}
 }
