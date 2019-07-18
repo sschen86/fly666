@@ -3,7 +3,7 @@ import md5 from '../utils/md5'
 
 const login_account = ['用户名登录', {
     mock: {
-        method: 'post2',
+        method: 'post',
         reqAdapter: {
             account: {
                 $key: 'mobile',
@@ -18,15 +18,8 @@ const login_account = ['用户名登录', {
             nick: { $comment: '用户昵称' },
             avatar: { $comment: '用户图标链接' },
         },
-        response2(ctx, resolve, reject) {
-            // reject('999')
-            resolve({
-                nick: '张三',
-                avatar: 'http://xxxx.com/',
-            })
-        },
         async response(ctx, resolve, reject) {
-            const { account, password } = ctx.params
+            const { account, password } = ctx.data
             const { Member } = ctx.model
 
             if (await Member.notExists({ mobile: account })) {
@@ -49,18 +42,22 @@ const create = ['用户注册', {
         method: 'post',
         async response(ctx, resolve, reject) {
             const { Member } = ctx.model
-            const { account, nick } = ctx.params
+            const { account: mobile, nick } = ctx.data
 
-            if (await Member.exists({ mobile: account })) {
-                reject('手机号码已被注册')
+            if (!mobile) {
+                reject('手机号码不能为空')
             }
 
-            if (!account || !/^1([38]\d|5[0-35-9]|7[3678])\d{8}$/.test(account)) {
+            if (!/^1([38]\d|5[0-35-9]|7[3678])\d{8}$/.test(mobile)) {
                 reject('手机号码错误')
             }
 
+            if (await Member.exists({ mobile })) {
+                reject('用户已注册')
+            }
+
             const user = Member.create({
-                mobile: account,
+                mobile,
                 nick,
                 passwordSafely: false,
                 password: '123456',
