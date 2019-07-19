@@ -4,7 +4,6 @@ import router from './router'
 
 
 // onsole.info({ koaBody })
-
 const app = new Koa()
 
 app.use(async (ctx, next) => {
@@ -12,7 +11,12 @@ app.use(async (ctx, next) => {
     ctx.set('Access-Control-Allow-Headers', 'content-type')
     ctx.set('Access-Control-Allow-Methods', 'OPTIONS,GET,HEAD,PUT,POST,DELETE,PATCH')
     ctx.set('Access-Control-Allow-Credentials', 'true')
-    await next()
+
+    if (ctx.method === 'OPTIONS') {
+        ctx.body = ''
+    } else {
+        await next()
+    }
 })
 app.use(koaBody({
     multipart: true,

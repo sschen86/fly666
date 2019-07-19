@@ -6,23 +6,15 @@ const openapis = {}
 
 const config = {
     async response(ctx, resolve, reject) {
-        resolve(gateway.getConfig(ctx.data))
+        resolve(gateway.getClientConfig(ctx.data))
     },
 }
 
 const configs = {
-    all: {
-        async response(ctx, resolve, reject) {
-            resolve({
-                cc: 111,
-            })
-        },
-    },
-    one: {
-        async response(ctx, resolve, reject) {
-            console.info(ctx.data)
-            resolve(gateway.getConfig(ctx.data))
-        },
+    async response(ctx, resolve, reject) {
+        resolve({
+            cc: 111,
+        })
     },
 }
 
@@ -41,7 +33,6 @@ export default async function (ctx, next) {
         ctx.body = { code: 404, message: '接口不存在' }
         return
     }
-
 
     let body
     try {
@@ -75,10 +66,11 @@ function openapisInit(configs) {
             const openapiId = namespace
             openapis[openapiId] = childConfigs
         } else {
+            /*
             for (const name in childConfigs) {
                 const openapiId = [namespace, ...name.replace(/[A-Z]/g, (val) => `_${val.toLowerCase()}`).split('_')].join('/')
                 openapis[openapiId] = childConfigs[name]
-            }
+            } */
         }
     }
     // console.info(openapis)

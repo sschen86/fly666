@@ -16,6 +16,7 @@
     "koa-bodyparser": "^4.2.1",
     "koa-router": "^7.4.0",
     "mongoose": "^5.6.4",
+    "node-watch": "^0.6.2",
     "reflect-metadata": "^0.1.13",
     "sqlite3": "^4.0.9",
     "typeorm": "^0.2.18"

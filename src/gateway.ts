@@ -1,37 +1,41 @@
 
-import member from '../gateways/member'
+import watch from 'node-watch'
+import * as path from 'path'
+import * as fs from 'fs'
+
 import 'reflect-metadata'
 import { createConnection } from 'typeorm'
-import Member from '../models/Member'
+import models from './models'
+
+const configs = {}
+const baseDir = path.resolve('gateways') + '\\'
 
 let hasConnection = false
-const gateways = {}
-const isMock = true
-let sourceId = 'mock'
-gatewaysInit({
-    member,
+let gatewayType = 'mock'
+let gatewayIsMock = gatewayType === 'mock'
+
+imports()
+
+watch('gateways', { recursive: true, filter: /\.ts$/ }, function (e, name) {
+    reload(name)
 })
 
+// console.info({ configs })
+
+gateway.getClientConfig = getClientConfig
 
 export default gateway
 
-
-
 async function gateway(ctx, next) {
     const { path, query } = ctx
-    const gatewayId = path.replace('/gateway/', '')
-    const gateway = gateways[gatewayId]
-    // console.info(ctx.request, {
-    //   path: ctx.path, query: ctx.query, querystring: ctx.querystring,
-    // })
-    if (!gateway) {
+    const code = path.replace('/gateway/', '')
+    const config = configs[code]
+    if (!config) {
         ctx.body = { code: 404, message: '接口不存在' }
         return
     }
 
-    const sources = gateway[1]
-    const gatewayConfig = sources[sourceId]
-
+    const gatewayConfig = config[gatewayType]
     if (!gatewayConfig) {
         ctx.body = { code: 404, message: '接口数据源未定义' }
         return
@@ -40,7 +44,7 @@ async function gateway(ctx, next) {
     let body = {}
 
     // mock源
-    if (isMock) {
+    if (gatewayIsMock) {
         const { response } = gatewayConfig
         if (typeof response === 'function') {
             try {
@@ -51,7 +55,7 @@ async function gateway(ctx, next) {
 
                 // console.info(ctx.request.body, ctx.request.files)
 
-                await response(gatewayContext(ctx), resolve, reject)
+                await response(responseContext(ctx), resolve, reject)
             } catch (err) {
                 if (err.message === 'PROMISE.RESOLVE' || err.message === 'PROMISE.REJECT') {
                     ctx.body = body
@@ -64,23 +68,8 @@ async function gateway(ctx, next) {
         }
     }
 
-    /*
-    let c2 = require('koa2-connect');
-let proxy = require('http-proxy-middleware')
-    c2k(proxy({
-        target: 'http://localhost:3000',
-        changeOrigin: true,
-        pathRewrite: {
-            '^/api/*': '^/internal/*',
-        },
-        logLevel: 'debug',
-    }))(ctx, next)
-    */
-
-
     function resolve(data) {
-        const { resAdapter } = gatewayConfig
-        body = { code: 200, data: resAdapter ? resAdapter(data) : data }
+        body = { code: 200, data }
         throw new Error('PROMISE.RESOLVE')
     }
 
@@ -90,37 +79,48 @@ let proxy = require('http-proxy-middleware')
     }
 }
 
-gateway.getConfig = getConfig
-
-
-function gatewaysInit(configs) {
-    for (const namespace in configs) {
-        const childConfigs = configs[namespace]
-        for (const name in childConfigs) {
-            const gatewayId = [namespace, ...name.replace(/[A-Z]/g, (val) => `_${val.toLowerCase()}`).split('_')].join('/')
-            const gateway = gateways[gatewayId] = childConfigs[name]
-            const sources = gateway[1]
-            if (sources.mock) {
-                const mockSource = sources.mock
-                mockSource.url = gatewayId
-                mockSource.method = mockSource.method || 'get'
-            }
-        }
+function responseContext(ctx) {
+    return {
+        params: ctx.query, ctx, data: ctx.request.body,
+        model: models, util: {},
     }
 }
 
-function gatewayContext(ctx) {
-    return { params: ctx.query, ctx, data: ctx.request.body, model: { Member }}
+
+function imports() {
+    const fileNames = fs.readdirSync(baseDir)
+    fileNames.forEach(name => {
+        reload(name)
+    })
 }
 
-function getConfig(data) {
+function reload(name) {
+    const moduleName = path.basename(name, '.js')
+    const modulePath = baseDir + path.basename(name)
+    const code = moduleName.replace(/-/g, '/')
+
+    const sourceCode = fs.readFileSync(modulePath, { encoding: 'utf-8' })
+
+    configs[code] = {
+        sourceCode,
+        // eslint-disable-next-line no-new-func
+        object: Function(sourceCode)(),
+    }
+
+}
+
+function getClientConfig(data) {
     const { code, params } = data
-    const gateway = gateways[code]
+    const config = configs[code]
+
+    console.info('99999', code, config)
 
     // 没有配置项，接口不存在
-    if (!gateway) {
+    if (!config) {
         return null
     }
+
+
 
     const cleanParams = {}
     for (const key in params) {
@@ -130,30 +130,5 @@ function getConfig(data) {
         cleanParams[key] = params[key]
     }
 
-    if (isMock) {
-        const mockConfig = gateway[1].mock
-        if (mockConfig) {
-            const method = mockConfig.method
-            const config = {
-                url: mockConfig.url,
-                method: mockConfig.method,
-                reqAdapter: mockConfig.reqAdapter,
-                resAdapter: mockConfig.resAdapter,
-                params: null,
-                data: null,
-            }
-
-            return `{
-                url: '${mockConfig.url}',
-                method: '${mockConfig.method}',
-                reqAdapter: null,
-                resAdapter: null
-            }`
-            // return config
-        } else {
-            return null
-        }
-
-    }
+    return { gatewayType, sourceCode: config.sourceCode }
 }
-

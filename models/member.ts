@@ -36,4 +36,5 @@ export default class Member extends BaseEntity {
     @Column()
     passwordSafely: Boolean
 
+
 }
