@@ -1,5 +1,4 @@
-
-export default {
+return {
     productionType: 'develop',
     developmentType: 'develop',
     sources: {
@@ -26,7 +25,6 @@ export default {
                     default:
                         responseDataCopyed.code = responseData.code
                 }
-
                 return responseDataCopyed
             },
         },

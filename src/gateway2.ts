@@ -1,94 +1,69 @@
 
-import * as fs from 'fs'
-import * as path from 'path'
-import * as proxy from 'koa-better-http-proxy'
-
 import watch from 'node-watch'
+import * as path from 'path'
+import * as fs from 'fs'
+
 import 'reflect-metadata'
 import { createConnection } from 'typeorm'
-
-import Codes from './Codes'
 import models from './models'
+import Codes from './Codes'
+import globalGatewayConfig from '../config/gateway'
 
-const gatewayBaseDir = path.resolve('gateways') + '\\'
-const globalGatewayConfigFile = gatewayBaseDir + 'config.js'
-const gatewayConfigsDir = gatewayBaseDir + '\\children\\'
+import * as proxy from 'koa-better-http-proxy'
 
-let globalGatewayConfig = null
-let gatewayConfigs = {}
-let gatewayType = null
-let dbIsReady = false
+const configs = {}
+const baseDir = path.resolve('gateways') + '\\'
 
+let hasConnection = false
+let gatewayType = globalGatewayConfig.developmentType || 'mock'
+let gatewayIsMock = gatewayType === 'mock'
 
-loadGlobalGatewayConfig()
-loadGatewayConfigs()
+console.info({ gatewayType, gatewayIsMock })
 
-watch(globalGatewayConfigFile, function (e, name) {
-    loadGlobalGatewayConfig()
+imports()
+
+watch('gateways', { recursive: true, filter: /\.js$/ }, function (e, name) {
+    reload(name)
 })
 
-watch(gatewayConfigsDir, { recursive: true, filter: /\.js$/ }, function (e, name) {
-    reloadGatewayConfig(name)
-})
+// console.info({ configs })
 
 gateway.getClientConfig = getClientConfig
 
 export default gateway
 
-
-function loadGlobalGatewayConfig() {
-    const code = fs.readFileSync(globalGatewayConfigFile, { encoding: 'utf-8' })
-    globalGatewayConfig = {
-        // eslint-disable-next-line no-new-func
-        code, object: Function(code)(),
-    }
-
-    gatewayType = globalGatewayConfig.object.development
-    console.info({ globalGatewayConfig, gatewayType })
-}
-
-function loadGatewayConfigs() {
-    const fileNames = fs.readdirSync(gatewayConfigsDir)
-    fileNames.forEach(reloadGatewayConfig)
-}
-
-function reloadGatewayConfig(name) {
-    const filePath = gatewayConfigsDir + name
-    const code = fs.readFileSync(filePath, { encoding: 'utf-8' })
-    const gatewayCode = path.basename(name, '.js').replace(/-/g, '/')
-
-    gatewayConfigs[gatewayCode] = {
-        code,
-        // eslint-disable-next-line no-new-func
-        object: Function(code)(),
-    }
-}
-
 async function gateway(ctx, next) {
     const { path, query } = ctx
-    const gatewayCode = path.replace('/gateway/', '')
+    const code = path.replace('/gateway/', '')
+    console.info(code, 'xxxxxxxxxxxxxxxxxxx')
 
-    const gatewatyConfigObject = gatewayConfigs[gatewayCode].object
-    if (!gatewatyConfigObject) {
+    const config = configs[code].object
+    if (!config) {
         ctx.body = Codes.HTTP404
         return
     }
 
-    const gatewayConfig = gatewatyConfigObject[gatewayType]
+    // console.info('xxx', config)
+
+    const gatewayConfig = config[gatewayType]
     if (!gatewayConfig) {
         ctx.body = Codes.HTTP404
         return
     }
 
     let body = {}
-    if (gatewayType === 'mock') {
+
+    // mock源
+    if (gatewayIsMock) {
         const { response } = gatewayConfig
         if (typeof response === 'function') {
             try {
-                if (!dbIsReady) {
+                if (!hasConnection) {
                     await createConnection()
-                    dbIsReady = true
+                    hasConnection = true
                 }
+
+                // console.info(ctx.request.body, ctx.request.files)
 
                 await response(responseContext(ctx), resolve, reject)
             } catch (err) {
@@ -102,30 +77,18 @@ async function gateway(ctx, next) {
         } else {
             ctx.body = Codes.ERROR_SYSTEM
         }
+        return
     } else {
-        httpProxy(ctx)
-    }
-
-    function resolve(data) {
-        body = { ...Codes.SUCCESS, data }
-        throw new Error('PROMISE.RESOLVE')
-    }
-
-    function reject(message, code = Codes.ERROR.code) {
-        body = { message, code }
-        throw new Error('PROMISE.REJECT')
-    }
-
-    function httpProxy(ctx) {
-        const { baseUrl } = globalGatewayConfig.object.sources[gatewayType]
+        const { baseUrl } = globalGatewayConfig.sources[gatewayType]
         const [host, port] = baseUrl.replace(/^https?:\/\/|\/.*/g, '').split(':')
-        const domain = baseUrl.replace(/^(https?:\/\/)|(\/.*)/g, (all, protocol) => {
+        const domain = baseUrl.replace(/^(https?:\/\/)|(\/.*)/g, (all, protocol, more) => {
             return protocol ? protocol : ''
         })
         const https = /^https:\/\//i.test(domain)
         const myPort = port ? port : (https ? 443 : 80)
 
-        proxy(baseUrl + gatewayConfig.url, {
+        // console.info({ host, port, url: baseUrl + gatewayConfig.url })
+        await (proxy(baseUrl + gatewayConfig.url, {
             https,
             port: myPort,
             proxyReqOptDecorator: function (proxyReqOpts, ctx) {
@@ -147,10 +110,19 @@ async function gateway(ctx, next) {
             proxyReqPathResolver: function (ctx) {
                 return (baseUrl + gatewayConfig.url).replace(domain, '')
             },
-        })(ctx, async () => { })
+        }))(ctx, async () => { })
 
     }
 
+    function resolve(data) {
+        body = { ...Codes.SUCCESS, data }
+        throw new Error('PROMISE.RESOLVE')
+    }
+
+    function reject(message, code = Codes.ERROR.code) {
+        body = { message, code }
+        throw new Error('PROMISE.REJECT')
+    }
 }
 
 function responseContext(ctx) {
@@ -160,12 +132,36 @@ function responseContext(ctx) {
     }
 }
 
-function getClientConfig(ctx) {
-    const { code, params } = ctx
-    const gatewatyConfig = gatewayConfigs[code]
+
+function imports() {
+    const fileNames = fs.readdirSync(baseDir)
+    fileNames.forEach(name => {
+        reload(name)
+    })
+}
+
+function reload(name) {
+    const moduleName = path.basename(name, '.js')
+    const modulePath = baseDir + path.basename(name)
+    const code = moduleName.replace(/-/g, '/')
+
+    const sourceCode = fs.readFileSync(modulePath, { encoding: 'utf-8' })
+
+    configs[code] = {
+        sourceCode,
+        // eslint-disable-next-line no-new-func
+        object: Function(sourceCode)(),
+    }
+}
+
+function getClientConfig(data) {
+    const { code, params } = data
+    const config = configs[code]
+
+    // console.info('99999', code, config)
 
     // 没有配置项，接口不存在
-    if (!gatewatyConfig) {
+    if (!config) {
         return null
     }
 
@@ -177,5 +173,5 @@ function getClientConfig(ctx) {
         cleanParams[key] = params[key]
     }
 
-    return { type: gatewayType, code: gatewatyConfig.code }
+    return { gatewayType, sourceCode: config.sourceCode }
 }
