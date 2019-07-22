@@ -1,5 +1,6 @@
 
 import gateway from './gateway'
+import Codes from './codes'
 
 const openapis = {}
 
@@ -30,7 +31,7 @@ export default async function (ctx, next) {
     const openapi = openapis[openapiId]
 
     if (!openapi) {
-        ctx.body = { code: 404, message: '接口不存在' }
+        ctx.body = Codes.HTTP404
         return
     }
 
@@ -43,17 +44,17 @@ export default async function (ctx, next) {
             ctx.body = body
         } else {
             console.error(err.stack)
-            ctx.body = { code: 503, message: err.message }
+            ctx.body = { ...Codes.ERROR_SYSTEM, message: err.message }
         }
     }
     return
 
     function resolve(data) {
-        body = { code: 200, data }
+        body = { ...Codes.SUCCESS, data }
         throw new Error('PROMISE.RESOLVE')
     }
 
-    function reject(message, code = 500) {
+    function reject(message, code = Codes.ERROR.code) {
         body = { message, code }
         throw new Error('PROMISE.REJECT')
     }
