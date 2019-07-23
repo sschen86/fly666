@@ -1,6 +1,6 @@
 return {
-    productionType: 'develop',
-    developmentType: 'develop',
+    production: 'develop',
+    development: 'develop',
     sources: {
         develop: {
             baseUrl: 'http://test2sop.sharegoodsmall.com/merchant-gw/',

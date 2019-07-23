@@ -1,6 +1,10 @@
 return {
     mock: {
         method: 'post',
+        reqAdapter: {
+            account: true,
+            password: true,
+        },
         resAdapter: {
             mobile: true,
             nick: (value) => '昵称：' + value,
@@ -29,4 +33,16 @@ return {
             password: {},
         },
     },
+
+    mockjson: {
+        delay: 100,
+        async response(ctx, resolve, reject) {
+            resolve({
+                nick: '张三11',
+                mobile: 1866998,
+                ppk: true,
+            })
+        },
+    },
+
 }

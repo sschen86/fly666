@@ -11,8 +11,8 @@ import Codes from './Codes'
 import models from './models'
 
 const gatewayBaseDir = path.resolve('gateways') + '\\'
+const gatewayConfigsDir = gatewayBaseDir + 'children\\'
 const globalGatewayConfigFile = gatewayBaseDir + 'config.js'
-const gatewayConfigsDir = gatewayBaseDir + '\\children\\'
 
 let globalGatewayConfig = null
 let gatewayConfigs = {}
@@ -23,12 +23,13 @@ let dbIsReady = false
 loadGlobalGatewayConfig()
 loadGatewayConfigs()
 
+
 watch(globalGatewayConfigFile, function (e, name) {
     loadGlobalGatewayConfig()
 })
 
-watch(gatewayConfigsDir, { recursive: true, filter: /\.js$/ }, function (e, name) {
-    reloadGatewayConfig(name)
+watch(gatewayConfigsDir, { recursive: true, filter: /\.js$/ }, function (e, filePath) {
+    reloadGatewayConfig(filePath)
 })
 
 gateway.getClientConfig = getClientConfig
@@ -44,18 +45,17 @@ function loadGlobalGatewayConfig() {
     }
 
     gatewayType = globalGatewayConfig.object.development
-    console.info({ globalGatewayConfig, gatewayType })
+    // console.info({ globalGatewayConfig, gatewayType })
 }
 
 function loadGatewayConfigs() {
     const fileNames = fs.readdirSync(gatewayConfigsDir)
-    fileNames.forEach(reloadGatewayConfig)
+    fileNames.forEach((fileName) => reloadGatewayConfig(gatewayConfigsDir + fileName))
 }
 
-function reloadGatewayConfig(name) {
-    const filePath = gatewayConfigsDir + name
+function reloadGatewayConfig(filePath) {
     const code = fs.readFileSync(filePath, { encoding: 'utf-8' })
-    const gatewayCode = path.basename(name, '.js').replace(/-/g, '/')
+    const gatewayCode = path.basename(filePath, '.js').replace(/-/g, '/')
 
     gatewayConfigs[gatewayCode] = {
         code,
@@ -74,13 +74,29 @@ async function gateway(ctx, next) {
         return
     }
 
+    let body = {}
+
+    if (gatewatyConfigObject.mockjson) {
+        const { response } = gatewatyConfigObject.mockjson
+        try {
+            await response(responseContext(ctx), resolve, reject)
+        } catch (err) {
+
+            if (err.message === 'PROMISE.RESOLVE' || err.message === 'PROMISE.REJECT') {
+                ctx.body = body
+            } else {
+                console.error(err.stack)
+                ctx.body = { ...Codes.ERROR_SYSTEM, message: err.message }
+            }
+        }
+        return
+    }
+
     const gatewayConfig = gatewatyConfigObject[gatewayType]
     if (!gatewayConfig) {
         ctx.body = Codes.HTTP404
         return
     }
-
-    let body = {}
     if (gatewayType === 'mock') {
         const { response } = gatewayConfig
         if (typeof response === 'function') {
@@ -103,7 +119,7 @@ async function gateway(ctx, next) {
             ctx.body = Codes.ERROR_SYSTEM
         }
     } else {
-        httpProxy(ctx)
+        await httpProxy(ctx)
     }
 
     function resolve(data) {
@@ -116,7 +132,7 @@ async function gateway(ctx, next) {
         throw new Error('PROMISE.REJECT')
     }
 
-    function httpProxy(ctx) {
+    async function httpProxy(ctx) {
         const { baseUrl } = globalGatewayConfig.object.sources[gatewayType]
         const [host, port] = baseUrl.replace(/^https?:\/\/|\/.*/g, '').split(':')
         const domain = baseUrl.replace(/^(https?:\/\/)|(\/.*)/g, (all, protocol) => {
@@ -125,7 +141,8 @@ async function gateway(ctx, next) {
         const https = /^https:\/\//i.test(domain)
         const myPort = port ? port : (https ? 443 : 80)
 
-        proxy(baseUrl + gatewayConfig.url, {
+
+        await (proxy(baseUrl + gatewayConfig.url, {
             https,
             port: myPort,
             proxyReqOptDecorator: function (proxyReqOpts, ctx) {
@@ -141,13 +158,13 @@ async function gateway(ctx, next) {
                 proxyReqOpts.headers.origin = domain
                 proxyReqOpts.headers.host = host
                 // proxyReqOpts.headers.referer = proxyReqOpts.headers.referer.replace(/^https?:\/\/([^/]+)/, domain)
-                console.info({ proxyReqOpts }, 'xxxxxxxxxx')
+                // console.info({ proxyReqOpts }, 'xxxxxxxxxx')
                 return proxyReqOpts
             },
             proxyReqPathResolver: function (ctx) {
                 return (baseUrl + gatewayConfig.url).replace(domain, '')
             },
-        })(ctx, async () => { })
+        }))(ctx, async () => { })
 
     }
 
@@ -177,5 +194,5 @@ function getClientConfig(ctx) {
         cleanParams[key] = params[key]
     }
 
-    return { type: gatewayType, code: gatewatyConfig.code }
+    return { type: gatewatyConfig.object.mockjson ? 'mockjson' : gatewayType, code: gatewatyConfig.code }
 }
