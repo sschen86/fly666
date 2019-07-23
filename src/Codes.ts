@@ -10,7 +10,7 @@ export default class Codes {
 
 
     static stringify() {
-        return JSON.stringify('SUCESS, HTTP401, HTTP403, HTTP404, ERROR, ERROR_SYSTEM'.split(/,\s*/).reduce((codes, id) => {
+        return JSON.stringify('SUCCESS, HTTP401, HTTP403, HTTP404, ERROR, ERROR_SYSTEM'.split(/,\s*/).reduce((codes, id) => {
             codes[id] = Codes[id].code
             return codes
         }, {}))

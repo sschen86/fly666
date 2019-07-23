@@ -23,6 +23,8 @@ let dbIsReady = false
 loadGlobalGatewayConfig()
 loadGatewayConfigs()
 
+getProductionConfig()
+
 
 watch(globalGatewayConfigFile, function (e, name) {
     loadGlobalGatewayConfig()
@@ -33,6 +35,7 @@ watch(gatewayConfigsDir, { recursive: true, filter: /\.js$/ }, function (e, file
 })
 
 gateway.getClientConfig = getClientConfig
+gateway.getProductionConfig = getProductionConfig
 
 export default gateway
 
@@ -195,4 +198,53 @@ function getClientConfig(ctx) {
     }
 
     return { type: gatewatyConfig.object.mockjson ? 'mockjson' : gatewayType, code: gatewatyConfig.code }
+}
+
+function getProductionConfig() {
+    const { production } = globalGatewayConfig.object
+    const indent = '    '
+
+    // console.info({ production })
+
+    const gateways = []
+    for (const gatewayCode in gatewayConfigs) {
+        let mockReqAdapter
+        let mockResAdapter
+        let productionConfig
+
+        const code = gatewayConfigs[gatewayCode].code
+        code.replace(RegExp(`\\n${indent}mock:\\s*(\\{[\\w\\W]*?\\n${indent}\\})`), (all, mockConfig) => {
+            mockConfig.replace(RegExp(`\\n${indent}${indent}reqAdapter:\\s*([\\w\\W]*?\\n${indent}${indent}\\})`), (all, match) => {
+                mockReqAdapter = match
+            })
+            mockConfig.replace(RegExp(`\\n${indent}${indent}resAdapter:\\s*([\\w\\W]*?\\n${indent}${indent}\\})`), (all, match) => {
+                mockResAdapter = match
+            })
+        })
+        code.replace(RegExp(`\\n${indent}${production}:\\s*(\\{[\\w\\W]*?\\n${indent}\\})`), (all, match) => {
+            productionConfig = match.replace(/\{/, () => {
+                let insertCode = '{'
+                if (mockReqAdapter) {
+                    insertCode += `\n${indent}${indent}mockReqAdapter: ${mockReqAdapter},\n`
+                }
+                if (mockResAdapter) {
+                    insertCode += `\n${indent}${indent}mockResAdapter: ${mockResAdapter},\n`
+                }
+                return insertCode
+            })
+        })
+
+        gateways.push(indent + gatewayCode + ': ' + productionConfig)
+
+    }
+
+    const configCode = `{
+    codes: ${Codes.stringify()},
+    globals: ${globalGatewayConfig.code.replace(/return\s*/, '')},
+    gateways: {
+        ${gateways.join(',\n')}
+    }
+}`
+    // console.info(configCode)
+    return configCode
 }

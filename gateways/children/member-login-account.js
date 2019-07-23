@@ -25,7 +25,7 @@ return {
             resolve(await Member.findOne({ mobile, password, select: ['mobile', 'nick'] }))
         },
     },
-    develop: {
+    sgtest: {
         method: 'post',
         url: 'merchant/user/accountLogin',
         reqAdapter: {
@@ -33,7 +33,6 @@ return {
             password: {},
         },
     },
-
     mockjson: {
         delay: 100,
         async response(ctx, resolve, reject) {

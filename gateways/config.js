@@ -1,8 +1,8 @@
 return {
-    production: 'develop',
-    development: 'develop',
+    production: 'sgtest',
+    development: 'sgtest',
     sources: {
-        develop: {
+        sgtest: {
             baseUrl: 'http://test2sop.sharegoodsmall.com/merchant-gw/',
             reqAdapter(reqOption) {
                 return reqOption

@@ -19,10 +19,18 @@ const configs = {
     },
 }
 
+const clientGatewayConfig = {
+    async response(ctx, resolve, reject) {
+        resolve(gateway.getProductionConfig())
+    },
+}
+
+
 
 openapisInit({
     config,
     configs,
+    'client-gateway-config': clientGatewayConfig,
 })
 
 export default async function (ctx, next) {
