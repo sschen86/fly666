@@ -234,7 +234,7 @@ function getProductionConfig() {
             })
         })
 
-        gateways.push(indent + gatewayCode + ': ' + productionConfig)
+        gateways.push(indent + '"' + gatewayCode + '": ' + productionConfig)
 
     }
 
