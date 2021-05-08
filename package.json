@@ -20,7 +20,7 @@
     "node-watch": "^0.6.2",
     "reflect-metadata": "^0.1.13",
     "sqlite3": "^4.0.9",
-    "typeorm": "^0.2.18"
+    "typeorm": "^0.2.25"
   },
   "devDependencies": {
     "@smartx/eslint-config-tendative": "^1.0.2",
